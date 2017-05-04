@@ -59,10 +59,10 @@ var WebViewAndroid = React.createClass({
       null
     );
   },
-  callJS: function(args) {
+  injectJS: function(args) {
     RCTUIManager.dispatchViewManagerCommand(
       this._getWebViewHandle(),
-      RCTUIManager.RNWebViewAndroid.Commands.callJS,
+      RCTUIManager.RNWebViewAndroid.Commands.injectJS,
       args
     );
   },

@@ -24,7 +24,7 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
     public static final int GO_FORWARD = 2;
     public static final int RELOAD = 3;
 
-    public static final int CALLJS = 0;
+    public static final int COMMAND_INJECT_JAVASCRIPT = 6;
 
 
     private static final String HTML_MIME_TYPE = "text/html";
@@ -178,7 +178,7 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
             "goBack", GO_BACK,
             "goForward", GO_FORWARD,
             "reload", RELOAD,
-                "callJS",CALLJS
+                "injectJS",COMMAND_INJECT_JAVASCRIPT
         );
     }
 
@@ -194,8 +194,8 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
             case RELOAD:
                 view.reload();
                 break;
-            case CALLJS:
-                view.callJS(view,args.getString(0));
+            case COMMAND_INJECT_JAVASCRIPT:
+                view.loadUrl("javascript:" + args.getString(0));
                 break;
         }
     }
