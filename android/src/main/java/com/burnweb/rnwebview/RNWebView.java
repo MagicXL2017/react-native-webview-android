@@ -1,10 +1,12 @@
 package com.burnweb.rnwebview;
 
 import android.annotation.SuppressLint;
-
-import android.net.Uri;
+import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Build;
+import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JsResult;
 import android.webkit.ValueCallback;
@@ -12,9 +14,10 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 
-import com.facebook.react.common.SystemClock;
 import com.facebook.react.bridge.LifecycleEventListener;
+import com.facebook.react.common.SystemClock;
 import com.facebook.react.uimanager.ThemedReactContext;
 import com.facebook.react.uimanager.UIManagerModule;
 import com.facebook.react.uimanager.events.EventDispatcher;
@@ -28,6 +31,11 @@ class RNWebView extends WebView implements LifecycleEventListener {
     private String baseUrl = "file:///";
     private String injectedJavaScript = null;
     private boolean allowUrlRedirect = false;
+
+    private double viewWidth = 100;
+    private double viewHeight = 100;
+
+
 
     protected class EventWebClient extends WebViewClient {
         public boolean shouldOverrideUrlLoading(WebView view, String url){
@@ -56,6 +64,12 @@ class RNWebView extends WebView implements LifecycleEventListener {
     }
 
     protected class CustomWebChromeClient extends WebChromeClient {
+
+        private View mCustomView;
+        private int mOriginalSystemUiVisibility;
+        private int mOriginalOrientation;
+        private WebChromeClient.CustomViewCallback mCustomViewCallback;
+
         @Override
         public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
             getModule().showAlert(url, message, result);
@@ -72,6 +86,67 @@ class RNWebView extends WebView implements LifecycleEventListener {
         @SuppressLint("NewApi")
         public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
             return getModule().startFileChooserIntent(filePathCallback, fileChooserParams.createIntent());
+        }
+
+        public void onShowCustomView(View view, CustomViewCallback callback){
+            // if a view already exists then immediately terminate the new one
+            if (mCustomView != null) {
+                onHideCustomView();
+                return;
+            }
+
+            // 1. Stash the current state
+            mCustomView = view;
+            mOriginalSystemUiVisibility = getModule().getActivity().getWindow().getDecorView().getSystemUiVisibility();
+            mOriginalOrientation = getModule().getActivity().getRequestedOrientation();
+
+            // 2. Stash the custom view callback
+            mCustomViewCallback = callback;
+
+
+            // 3. Add the custom view to the view hierarchy
+            FrameLayout decor = (FrameLayout) getModule().getActivity().getWindow().getDecorView();
+
+            decor.addView(mCustomView, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+
+            // 4. Change the state of the window
+
+            int uiFlags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN; // hide status bar
+
+            if (android.os.Build.VERSION.SDK_INT >= 19) {
+                uiFlags |= View.SYSTEM_UI_FLAG_IMMERSIVE;//0x00001000; // SYSTEM_UI_FLAG_IMMERSIVE_STICKY: hide
+            } else {
+                uiFlags |= View.SYSTEM_UI_FLAG_LOW_PROFILE;
+            }
+
+            decor.setSystemUiVisibility(uiFlags);
+
+
+            getModule().getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        }
+
+        public void onHideCustomView(){
+
+            // 1. Remove the custom view
+            FrameLayout decor = (FrameLayout) getModule().getActivity().getWindow().getDecorView();
+            decor.removeView(mCustomView);
+            mCustomView = null;
+
+            // 2. Restore the state to it's original form
+            getModule().getActivity().getWindow().getDecorView()
+                    .setSystemUiVisibility(mOriginalSystemUiVisibility);
+            getModule().getActivity().setRequestedOrientation(mOriginalOrientation);
+
+            // 3. Call the custom view callback
+            mCustomViewCallback.onCustomViewHidden();
+            mCustomViewCallback = null;
+
         }
     }
 
@@ -140,6 +215,7 @@ class RNWebView extends WebView implements LifecycleEventListener {
         return this.baseUrl;
     }
 
+
     public CustomWebChromeClient getCustomClient() {
         return new CustomWebChromeClient();
     }
@@ -172,5 +248,12 @@ class RNWebView extends WebView implements LifecycleEventListener {
         this.loadDataWithBaseURL(this.getBaseUrl(), "<html></html>", "text/html", this.getCharset(), null);
         super.onDetachedFromWindow();
     }
+
+    public void callJS(WebView view, String args) {
+        if(args != null) {
+            view.loadUrl("javascript:(function() {\n" + args + ";\n})();");
+        }
+    }
+
 
 }

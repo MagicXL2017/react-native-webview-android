@@ -1,29 +1,31 @@
 package com.burnweb.rnwebview;
 
-import javax.annotation.Nullable;
+import android.view.ViewGroup.LayoutParams;
+import android.webkit.CookieManager;
+import android.webkit.WebSettings;
+
+import com.facebook.react.bridge.ReadableArray;
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableMapKeySetIterator;
+import com.facebook.react.common.MapBuilder;
+import com.facebook.react.common.annotations.VisibleForTesting;
+import com.facebook.react.uimanager.SimpleViewManager;
+import com.facebook.react.uimanager.ThemedReactContext;
+import com.facebook.react.uimanager.annotations.ReactProp;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import android.view.ViewGroup.LayoutParams;
-import android.webkit.WebSettings;
-import android.webkit.CookieManager;
-
-import com.facebook.react.bridge.ReadableMap;
-import com.facebook.react.bridge.ReadableMapKeySetIterator;
-
-import com.facebook.react.bridge.ReadableArray;
-import com.facebook.react.common.MapBuilder;
-import com.facebook.react.uimanager.SimpleViewManager;
-import com.facebook.react.uimanager.ThemedReactContext;
-import com.facebook.react.uimanager.annotations.ReactProp;
-import com.facebook.react.common.annotations.VisibleForTesting;
+import javax.annotation.Nullable;
 
 public class RNWebViewManager extends SimpleViewManager<RNWebView> {
 
     public static final int GO_BACK = 1;
     public static final int GO_FORWARD = 2;
     public static final int RELOAD = 3;
+
+    public static final int CALLJS = 0;
+
 
     private static final String HTML_MIME_TYPE = "text/html";
 
@@ -169,12 +171,14 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
         view.setInjectedJavaScript(injectedJavaScript);
     }
 
+
     @Override
     public @Nullable Map<String, Integer> getCommandsMap() {
         return MapBuilder.of(
             "goBack", GO_BACK,
             "goForward", GO_FORWARD,
-            "reload", RELOAD
+            "reload", RELOAD,
+                "callJS",CALLJS
         );
     }
 
@@ -189,6 +193,9 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
                 break;
             case RELOAD:
                 view.reload();
+                break;
+            case CALLJS:
+                view.callJS(view,args.getString(0));
                 break;
         }
     }
