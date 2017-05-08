@@ -27,13 +27,18 @@ class RNWebView extends WebView implements LifecycleEventListener {
     private final EventDispatcher mEventDispatcher;
     private final RNWebViewManager mViewManager;
 
+    private final WebViewEventEmitter webEventEmitter;
+
     private String charset = "UTF-8";
     private String baseUrl = "file:///";
     private String injectedJavaScript = null;
     private boolean allowUrlRedirect = false;
 
+    private boolean isFullScreen = false;
+
     private double viewWidth = 100;
     private double viewHeight = 100;
+
 
 
 
@@ -127,6 +132,8 @@ class RNWebView extends WebView implements LifecycleEventListener {
 
             decor.setSystemUiVisibility(uiFlags);
 
+            isFullScreen = true;
+            webEventEmitter.onFullScreen(isFullScreen);
 
             getModule().getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         }
@@ -147,6 +154,9 @@ class RNWebView extends WebView implements LifecycleEventListener {
             mCustomViewCallback.onCustomViewHidden();
             mCustomViewCallback = null;
 
+            isFullScreen = false;
+            webEventEmitter.onFullScreen(isFullScreen);
+
         }
     }
 
@@ -162,6 +172,8 @@ class RNWebView extends WebView implements LifecycleEventListener {
 
         mViewManager = viewManager;
         mEventDispatcher = reactContext.getNativeModule(UIManagerModule.class).getEventDispatcher();
+
+        webEventEmitter = new WebViewEventEmitter(reactContext);
 
         this.getSettings().setJavaScriptEnabled(true);
         this.getSettings().setBuiltInZoomControls(false);
@@ -216,6 +228,16 @@ class RNWebView extends WebView implements LifecycleEventListener {
     }
 
 
+    public void setIsFullScreen(boolean isFullScreen) {
+        this.isFullScreen = isFullScreen;
+    }
+
+    public boolean getIsFullScreen() {
+        return this.isFullScreen;
+    }
+
+
+
     public CustomWebChromeClient getCustomClient() {
         return new CustomWebChromeClient();
     }
@@ -249,11 +271,11 @@ class RNWebView extends WebView implements LifecycleEventListener {
         super.onDetachedFromWindow();
     }
 
-    public void callJS(WebView view, String args) {
-        if(args != null) {
-            view.loadUrl("javascript:(function() {\n" + args + ";\n})();");
-        }
-    }
+//    public void callJS(WebView view, String args) {
+//        if(args != null) {
+//            view.loadUrl("javascript:(function() {\n" + args + ";\n})();");
+//        }
+//    }
 
 
 }

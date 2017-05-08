@@ -4,6 +4,8 @@ import android.view.ViewGroup.LayoutParams;
 import android.webkit.CookieManager;
 import android.webkit.WebSettings;
 
+import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.ReadableMapKeySetIterator;
@@ -19,6 +21,8 @@ import java.util.Map;
 import javax.annotation.Nullable;
 
 public class RNWebViewManager extends SimpleViewManager<RNWebView> {
+
+
 
     public static final int GO_BACK = 1;
     public static final int GO_FORWARD = 2;
@@ -172,6 +176,12 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
     }
 
 
+    @ReactMethod
+    public void isFullScreen(RNWebView view, Callback callback) {
+        callback.invoke(view.getIsFullScreen());
+    }
+
+
     @Override
     public @Nullable Map<String, Integer> getCommandsMap() {
         return MapBuilder.of(
@@ -202,9 +212,13 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
 
     @Override
     public Map getExportedCustomDirectEventTypeConstants() {
-        return MapBuilder.of(
-                NavigationStateChangeEvent.EVENT_NAME, MapBuilder.of("registrationName", "onNavigationStateChange")
-        );
+
+        MapBuilder.Builder<String, Object> builder = MapBuilder.builder();
+        builder.put(NavigationStateChangeEvent.EVENT_NAME, MapBuilder.of("registrationName", "onNavigationStateChange"));
+        for (String event : WebViewEventEmitter.Events) {
+            builder.put(event, MapBuilder.of("registrationName", event));
+        }
+        return builder.build();
     }
 
     @Override
