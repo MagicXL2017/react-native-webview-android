@@ -39,7 +39,11 @@ class RNWebView extends WebView implements LifecycleEventListener {
     private double viewWidth = 100;
     private double viewHeight = 100;
 
-
+    @Override
+    public void setId(int id) {
+        super.setId(id);
+        webEventEmitter.setViewId(id);
+    }
 
 
     protected class EventWebClient extends WebViewClient {
