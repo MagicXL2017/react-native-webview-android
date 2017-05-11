@@ -3,8 +3,13 @@ package com.burnweb.rnwebview;
 import android.annotation.SuppressLint;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.GeolocationPermissions;
@@ -15,6 +20,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.VideoView;
 
 import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.common.SystemClock;
@@ -39,6 +45,13 @@ class RNWebView extends WebView implements LifecycleEventListener {
     private double viewWidth = 100;
     private double viewHeight = 100;
 
+    private View mCustomView;
+    private int mOriginalSystemUiVisibility;
+    private int mOriginalOrientation;
+    private WebChromeClient.CustomViewCallback mCustomViewCallback;
+
+    CustomWebChromeClient customWebChromeClient;
+
     @Override
     public void setId(int id) {
         super.setId(id);
@@ -62,9 +75,48 @@ class RNWebView extends WebView implements LifecycleEventListener {
         public void onPageFinished(WebView view, String url) {
             mEventDispatcher.dispatchEvent(new NavigationStateChangeEvent(getId(), SystemClock.nanoTime(), view.getTitle(), false, url, view.canGoBack(), view.canGoForward()));
 
+                // Run javascript code that detects the video end and notifies the interface
+                String js = "javascript:(function() {";
+                js += "_ytrp_html5_video = document.getElementsByTagName('video')[0];";
+                js += "if (_ytrp_html5_video !== undefined) {";
+                {
+                    js += "function _ytrp_html5_video_ended() {";
+                    {
+//                        js += "_ytrp_html5_video.removeEventListener('ended', _ytrp_html5_video_ended);";
+                        js += "_VideoEnabledWebView.notifyVideoEnd();"; // Must match Javascript interface name and method of VideoEnableWebView
+                    }
+                    js += "}";
+                    js += "_ytrp_html5_video.addEventListener('ended', _ytrp_html5_video_ended);";
+
+//                    js += "function _ytrp_html5_video_fullscreenchange() {";
+//                    {
+//                        js += "_VideoEnabledWebView.notifyVideoSetFullScreen();"; // Must match Javascript interface name and method of VideoEnableWebView
+//                    }
+//                    js += "}";
+//                    js += "_ytrp_html5_video.addEventListener('fullscreenchange', _ytrp_html5_video_fullscreenchange);";
+//
+//                    js += "_ytrp_html5_video_fullscreen_control = document.getElementsByClassName('vjs-fullscreen-control')[0];";
+//                    js += "function _ytrp_html5_video_fullscreen_control() {";
+//                    {
+//                        js += "_ytrp_html5_video.trigger('fullscreenchange')";
+//                    }
+//                    js += "}";
+//                    js += "_ytrp_html5_video_fullscreen_control.addEventListener('touchstart', _ytrp_html5_video_fullscreen_control);";
+
+                }
+                js += "}";
+//                js += "_VideoEnabledWebView.notifyVideoSetFullScreen();";
+
+
+//                view.loadUrl(js);
+
             if(RNWebView.this.getInjectedJavaScript() != null) {
-                view.loadUrl("javascript:(function() {\n" + RNWebView.this.getInjectedJavaScript() + ";\n})();");
+//                view.loadUrl("\n" + RNWebView.this.getInjectedJavaScript() + ";\n})();");
+                js += RNWebView.this.getInjectedJavaScript() + ";";
             }
+            js += "})();";
+            view.loadUrl(js);
+
         }
 
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
@@ -72,12 +124,9 @@ class RNWebView extends WebView implements LifecycleEventListener {
         }
     }
 
-    protected class CustomWebChromeClient extends WebChromeClient {
+    protected class CustomWebChromeClient extends WebChromeClient implements MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener {
 
-        private View mCustomView;
-        private int mOriginalSystemUiVisibility;
-        private int mOriginalOrientation;
-        private WebChromeClient.CustomViewCallback mCustomViewCallback;
+
 
         @Override
         public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
@@ -97,7 +146,30 @@ class RNWebView extends WebView implements LifecycleEventListener {
             return getModule().startFileChooserIntent(filePathCallback, fileChooserParams.createIntent());
         }
 
+        @Override
+        public void onShowCustomView(View view, int requestedOrientation, CustomViewCallback callback) // Only available in API level 14+
+        {
+            onShowCustomView(view, callback);
+        }
+
         public void onShowCustomView(View view, CustomViewCallback callback){
+
+            Log.d("RNWebView","onShowCustomView-Run");
+
+            if (view instanceof SurfaceView){
+                Log.d("RNWebView","onShowCustomView-is SurfaceView");
+            }else{
+                Log.d("RNWebView","onShowCustomView-not is SurfaceView");
+            }
+
+            if (view instanceof VideoView){
+                Log.d("onShowCustomView","onShowCustomView-is VideoView");
+            }else{
+                Log.d("RNWebView","onShowCustomView-not is VideoView");
+            }
+
+
+
             // if a view already exists then immediately terminate the new one
             if (mCustomView != null) {
                 onHideCustomView();
@@ -126,13 +198,15 @@ class RNWebView extends WebView implements LifecycleEventListener {
                     | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                     | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                     | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
-                    | View.SYSTEM_UI_FLAG_FULLSCREEN; // hide status bar
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
 
-            if (android.os.Build.VERSION.SDK_INT >= 19) {
-                uiFlags |= View.SYSTEM_UI_FLAG_IMMERSIVE;//0x00001000; // SYSTEM_UI_FLAG_IMMERSIVE_STICKY: hide
-            } else {
-                uiFlags |= View.SYSTEM_UI_FLAG_LOW_PROFILE;
-            }
+//            if (android.os.Build.VERSION.SDK_INT >= 19) {
+//                uiFlags |= View.SYSTEM_UI_FLAG_IMMERSIVE;//0x00001000; // SYSTEM_UI_FLAG_IMMERSIVE_STICKY: hide
+//            } else {
+//                uiFlags |= View.SYSTEM_UI_FLAG_LOW_PROFILE;
+//            }
 
             decor.setSystemUiVisibility(uiFlags);
 
@@ -146,8 +220,10 @@ class RNWebView extends WebView implements LifecycleEventListener {
 
             // 1. Remove the custom view
             FrameLayout decor = (FrameLayout) getModule().getActivity().getWindow().getDecorView();
-            decor.removeView(mCustomView);
-            mCustomView = null;
+            if (mCustomView != null) {
+                decor.removeView(mCustomView);
+                mCustomView = null;
+            }
 
             // 2. Restore the state to it's original form
             getModule().getActivity().getWindow().getDecorView()
@@ -155,12 +231,53 @@ class RNWebView extends WebView implements LifecycleEventListener {
             getModule().getActivity().setRequestedOrientation(mOriginalOrientation);
 
             // 3. Call the custom view callback
-            mCustomViewCallback.onCustomViewHidden();
-            mCustomViewCallback = null;
+            if (mCustomViewCallback != null) {
+                mCustomViewCallback.onCustomViewHidden();
+                mCustomViewCallback = null;
+            }
 
             isFullScreen = false;
             webEventEmitter.onFullScreen(isFullScreen);
 
+        }
+
+        @Override
+        public void onPrepared(MediaPlayer mp) // Video will start playing, only called in the case of VideoView (typically API level <11)
+        {
+//            if (loadingView != null)
+//            {
+//                loadingView.setVisibility(View.GONE);
+//            }
+        }
+
+        @Override
+        public void onCompletion(MediaPlayer mp) // Video finished playing, only called in the case of VideoView (typically API level <11)
+        {
+            onHideCustomView();
+        }
+
+        @Override
+        public boolean onError(MediaPlayer mp, int what, int extra) // Error while playing video, only called in the case of VideoView (typically API level <11)
+        {
+            return false; // By returning false, onCompletion() will be called
+        }
+
+        /**
+         * Notifies the class that the back key has been pressed by the user.
+         * This must be called from the Activity's onBackPressed(), and if it returns false, the activity itself should handle it. Otherwise don't do anything.
+         * @return Returns true if the event was handled, and false if it is not (video view is not visible)
+         */
+        public boolean onBackPressed()
+        {
+            if (isFullScreen)
+            {
+                onHideCustomView();
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
     }
 
@@ -168,6 +285,57 @@ class RNWebView extends WebView implements LifecycleEventListener {
         @Override
         public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
             callback.invoke(origin, true, false);
+        }
+    }
+
+    public class JavascriptInterface
+    {
+        @android.webkit.JavascriptInterface @SuppressWarnings("unused")
+        public void notifyVideoEnd() // Must match Javascript interface method of VideoEnabledWebChromeClient
+        {
+            Log.d("___", "GOT IT");
+            // This code is not executed in the UI thread, so we must force that to happen
+            new Handler(Looper.getMainLooper()).post(new Runnable()
+            {
+                @Override
+                public void run()
+                {
+//                    if (customWebChromeClient != null)
+//                    {
+//                        customWebChromeClient.onHideCustomView();
+//                    }
+                    quitFullScreen();
+                }
+            });
+        }
+
+        @android.webkit.JavascriptInterface @SuppressWarnings("unused")
+        public void notifyVideoSetFullScreen() // Must match Javascript interface method of VideoEnabledWebChromeClient
+        {
+            Log.d("___", "GOT IT");
+            // This code is not executed in the UI thread, so we must force that to happen
+            new Handler(Looper.getMainLooper()).post(new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    setFullScreen();
+                }
+            });
+        }
+        @android.webkit.JavascriptInterface @SuppressWarnings("unused")
+        public void notifyVideoExitFullScreen() // Must match Javascript interface method of VideoEnabledWebChromeClient
+        {
+            Log.d("___", "GOT IT");
+            // This code is not executed in the UI thread, so we must force that to happen
+            new Handler(Looper.getMainLooper()).post(new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    quitFullScreen();
+                }
+            });
         }
     }
 
@@ -196,7 +364,13 @@ class RNWebView extends WebView implements LifecycleEventListener {
         }
 
         this.setWebViewClient(new EventWebClient());
-        this.setWebChromeClient(getCustomClient());
+
+        this.addJavascriptInterface(new JavascriptInterface(), "_VideoEnabledWebView");
+        customWebChromeClient = getCustomClient();
+        this.setWebChromeClient(customWebChromeClient);
+
+        Log.i("RNWebView","RNWebView");
+
     }
 
     public void setCharset(String charset) {
@@ -281,5 +455,106 @@ class RNWebView extends WebView implements LifecycleEventListener {
 //        }
 //    }
 
+
+    /**
+     * 设置全屏
+     */
+    private void setFullScreen() {
+        // 设置全屏的相关属性，获取当前的屏幕状态，然后设置全屏
+//        getModule().getActivity().getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+//                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        if (mCustomView != null) {
+            quitFullScreen();
+            return;
+        }
+
+        // 1. Stash the current state
+//        mCustomView = view;
+        mOriginalSystemUiVisibility = getModule().getActivity().getWindow().getDecorView().getSystemUiVisibility();
+        mOriginalOrientation = getModule().getActivity().getRequestedOrientation();
+
+        // 2. Stash the custom view callback
+//        mCustomViewCallback = callback;
+
+        FrameLayout decor = (FrameLayout) getModule().getActivity().getWindow().getDecorView();
+
+//        View view = getModule().getActivity().getWindow();
+
+
+//        Log.d("RNWebView-RootView",view.getFocusedChild());
+//
+//        if (view instanceof SurfaceView){
+//            Log.d("RNWebView","setFullScreen-is SurfaceView");
+//        }else{
+//            Log.d("RNWebView","setFullScreen-not is SurfaceView");
+//        }
+//
+//        if (view instanceof VideoView){
+//            Log.d("onShowCustomView","setFullScreen-is VideoView");
+//        }else{
+//            Log.d("RNWebView","setFullScreen-not is VideoView");
+//        }
+
+//        decor.addView(view, new FrameLayout.LayoutParams(
+//                ViewGroup.LayoutParams.MATCH_PARENT,
+//                ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // 4. Change the state of the window
+
+        int uiFlags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
+                | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
+                | View.SYSTEM_UI_FLAG_IMMERSIVE
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+
+//            if (android.os.Build.VERSION.SDK_INT >= 19) {
+//                uiFlags |= View.SYSTEM_UI_FLAG_IMMERSIVE;//0x00001000; // SYSTEM_UI_FLAG_IMMERSIVE_STICKY: hide
+//            } else {
+//                uiFlags |= View.SYSTEM_UI_FLAG_LOW_PROFILE;
+//            }
+
+        decor.setSystemUiVisibility(uiFlags);
+
+//        isFullScreen = true;
+//        webEventEmitter.onFullScreen(isFullScreen);
+
+        getModule().getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+//        // 全屏下的状态码：1098974464
+//        // 窗口下的状态吗：1098973440
+        isFullScreen=true;
+        webEventEmitter.onFullScreen(isFullScreen);
+    }
+
+    /**
+     * 退出全屏
+     */
+    private void quitFullScreen() {
+        // 声明当前屏幕状态的参数并获取
+// 1. Remove the custom view
+        FrameLayout decor = (FrameLayout) getModule().getActivity().getWindow().getDecorView();
+        if (mCustomView != null) {
+            decor.removeView(mCustomView);
+            mCustomView = null;
+        }
+
+        // 2. Restore the state to it's original form
+        getModule().getActivity().getWindow().getDecorView()
+                .setSystemUiVisibility(mOriginalSystemUiVisibility);
+        getModule().getActivity().setRequestedOrientation(mOriginalOrientation);
+
+        // 3. Call the custom view callback
+        if (mCustomViewCallback != null){
+            mCustomViewCallback.onCustomViewHidden();
+            mCustomViewCallback = null;
+        }
+
+
+        getModule().getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        isFullScreen=false;
+        webEventEmitter.onFullScreen(isFullScreen);
+    }
 
 }
