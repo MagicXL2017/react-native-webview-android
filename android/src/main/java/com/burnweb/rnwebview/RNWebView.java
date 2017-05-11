@@ -41,6 +41,7 @@ class RNWebView extends WebView implements LifecycleEventListener {
     private boolean allowUrlRedirect = false;
 
     private boolean isFullScreen = false;
+    private boolean isCanFullScreen = false;
 
     private double viewWidth = 100;
     private double viewHeight = 100;
@@ -75,18 +76,18 @@ class RNWebView extends WebView implements LifecycleEventListener {
         public void onPageFinished(WebView view, String url) {
             mEventDispatcher.dispatchEvent(new NavigationStateChangeEvent(getId(), SystemClock.nanoTime(), view.getTitle(), false, url, view.canGoBack(), view.canGoForward()));
 
-                // Run javascript code that detects the video end and notifies the interface
-                String js = "javascript:(function() {";
-                js += "_ytrp_html5_video = document.getElementsByTagName('video')[0];";
-                js += "if (_ytrp_html5_video !== undefined) {";
+            // Run javascript code that detects the video end and notifies the interface
+            String js = "javascript:(function() {";
+            js += "_ytrp_html5_video = document.getElementsByTagName('video')[0];";
+            js += "if (_ytrp_html5_video !== undefined) {";
+            {
+                js += "function _ytrp_html5_video_ended() {";
                 {
-                    js += "function _ytrp_html5_video_ended() {";
-                    {
 //                        js += "_ytrp_html5_video.removeEventListener('ended', _ytrp_html5_video_ended);";
-                        js += "_VideoEnabledWebView.notifyVideoEnd();"; // Must match Javascript interface name and method of VideoEnableWebView
-                    }
-                    js += "}";
-                    js += "_ytrp_html5_video.addEventListener('ended', _ytrp_html5_video_ended);";
+                    js += "_VideoEnabledWebView.notifyVideoEnd();"; // Must match Javascript interface name and method of VideoEnableWebView
+                }
+                js += "}";
+                js += "_ytrp_html5_video.addEventListener('ended', _ytrp_html5_video_ended);";
 
 //                    js += "function _ytrp_html5_video_fullscreenchange() {";
 //                    {
@@ -103,8 +104,8 @@ class RNWebView extends WebView implements LifecycleEventListener {
 //                    js += "}";
 //                    js += "_ytrp_html5_video_fullscreen_control.addEventListener('touchstart', _ytrp_html5_video_fullscreen_control);";
 
-                }
-                js += "}";
+            }
+            js += "}";
 //                js += "_VideoEnabledWebView.notifyVideoSetFullScreen();";
 
 
@@ -155,7 +156,7 @@ class RNWebView extends WebView implements LifecycleEventListener {
         public void onShowCustomView(View view, CustomViewCallback callback){
 
             Log.d("RNWebView","onShowCustomView-Run");
-
+            isCanFullScreen = true;
             if (view instanceof SurfaceView){
                 Log.d("RNWebView","onShowCustomView-is SurfaceView");
             }else{
@@ -214,10 +215,11 @@ class RNWebView extends WebView implements LifecycleEventListener {
             webEventEmitter.onFullScreen(isFullScreen);
 
             getModule().getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+//            super.onShowCustomView(view, callback);
         }
 
         public void onHideCustomView(){
-
+            Log.d("RNWebView","onHideCustomView-Run");
             // 1. Remove the custom view
             FrameLayout decor = (FrameLayout) getModule().getActivity().getWindow().getDecorView();
             if (mCustomView != null) {
@@ -238,6 +240,7 @@ class RNWebView extends WebView implements LifecycleEventListener {
 
             isFullScreen = false;
             webEventEmitter.onFullScreen(isFullScreen);
+//            super.onHideCustomView();
 
         }
 
@@ -293,18 +296,23 @@ class RNWebView extends WebView implements LifecycleEventListener {
         @android.webkit.JavascriptInterface @SuppressWarnings("unused")
         public void notifyVideoEnd() // Must match Javascript interface method of VideoEnabledWebChromeClient
         {
-            Log.d("___", "GOT IT");
+            Log.d("RNWebView", "GOT notifyVideoEnd");
             // This code is not executed in the UI thread, so we must force that to happen
             new Handler(Looper.getMainLooper()).post(new Runnable()
             {
                 @Override
                 public void run()
                 {
-//                    if (customWebChromeClient != null)
-//                    {
-//                        customWebChromeClient.onHideCustomView();
-//                    }
-                    quitFullScreen();
+
+                    if (isCanFullScreen){
+                        if (customWebChromeClient != null && mCustomView != null)
+                    {
+                        customWebChromeClient.onHideCustomView();
+                    }
+                    }else{
+                        quitFullScreen();
+                    }
+
                 }
             });
         }
@@ -312,7 +320,7 @@ class RNWebView extends WebView implements LifecycleEventListener {
         @android.webkit.JavascriptInterface @SuppressWarnings("unused")
         public void notifyVideoSetFullScreen() // Must match Javascript interface method of VideoEnabledWebChromeClient
         {
-            Log.d("___", "GOT IT");
+            Log.d("RNWebView", "GOT notifyVideoSetFullScreen");
             // This code is not executed in the UI thread, so we must force that to happen
             new Handler(Looper.getMainLooper()).post(new Runnable()
             {
@@ -326,7 +334,7 @@ class RNWebView extends WebView implements LifecycleEventListener {
         @android.webkit.JavascriptInterface @SuppressWarnings("unused")
         public void notifyVideoExitFullScreen() // Must match Javascript interface method of VideoEnabledWebChromeClient
         {
-            Log.d("___", "GOT IT");
+            Log.d("RNWebView", "GOT notifyVideoExitFullScreen");
             // This code is not executed in the UI thread, so we must force that to happen
             new Handler(Looper.getMainLooper()).post(new Runnable()
             {
@@ -348,6 +356,7 @@ class RNWebView extends WebView implements LifecycleEventListener {
         webEventEmitter = new WebViewEventEmitter(reactContext);
 
         this.getSettings().setJavaScriptEnabled(true);
+        this.getSettings().setSupportZoom(false);
         this.getSettings().setBuiltInZoomControls(false);
         this.getSettings().setDomStorageEnabled(true);
         this.getSettings().setGeolocationEnabled(false);
@@ -358,6 +367,12 @@ class RNWebView extends WebView implements LifecycleEventListener {
         this.getSettings().setLoadsImagesAutomatically(true);
         this.getSettings().setBlockNetworkImage(false);
         this.getSettings().setBlockNetworkLoads(false);
+        this.getSettings().setAllowContentAccess(false);
+
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1){
+            this.getSettings().setMediaPlaybackRequiresUserGesture(false);
+        }
+
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             this.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
@@ -430,16 +445,17 @@ class RNWebView extends WebView implements LifecycleEventListener {
 
     @Override
     public void onHostResume() {
-
+        Log.d("RNWebView","onHostResume");
     }
 
     @Override
     public void onHostPause() {
-
+        Log.d("RNWebView","onHostPause");
     }
 
     @Override
     public void onHostDestroy() {
+        Log.d("RNWebView","onHostDestroy");
         destroy();
     }
 
@@ -460,14 +476,21 @@ class RNWebView extends WebView implements LifecycleEventListener {
      * 设置全屏
      */
     private void setFullScreen() {
+
+        if (isCanFullScreen) {
+            Log.d("RNWebView","setFullScreen-CanFullScreen-NoRunSetFullScreen");
+            return;
+        }else{
+            Log.d("RNWebView","setFullScreen-NoCanFullScreen-RunSetFullScreen");
+        }
         // 设置全屏的相关属性，获取当前的屏幕状态，然后设置全屏
 //        getModule().getActivity().getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
 //                WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
-        if (mCustomView != null) {
-            quitFullScreen();
-            return;
-        }
+        Log.d("RNWebView","setFullScreen-Run");
+//        if (mCustomView != null) {
+//            quitFullScreen();
+//            return;
+//        }
 
         // 1. Stash the current state
 //        mCustomView = view;
@@ -532,29 +555,42 @@ class RNWebView extends WebView implements LifecycleEventListener {
      * 退出全屏
      */
     private void quitFullScreen() {
-        // 声明当前屏幕状态的参数并获取
+        if (isCanFullScreen) {
+            Log.d("RNWebView","quitFullScreen-CanFullScreen-NoRunQuitFullScreen");
+            return;
+        }else{
+            Log.d("RNWebView","quitFullScreen-NoCanFullScreen-RunQuitFullScreen");
+        }
+        if (isFullScreen) {
+            Log.d("RNWebView","quitFullScreen-isFullScreen-RunQuitFullScreen");
+            // 声明当前屏幕状态的参数并获取
 // 1. Remove the custom view
-        FrameLayout decor = (FrameLayout) getModule().getActivity().getWindow().getDecorView();
-        if (mCustomView != null) {
-            decor.removeView(mCustomView);
-            mCustomView = null;
+//        FrameLayout decor = (FrameLayout) getModule().getActivity().getWindow().getDecorView();
+//        if (mCustomView != null) {
+//            decor.removeView(mCustomView);
+//            mCustomView = null;
+//        }
+
+            // 2. Restore the state to it's original form
+            getModule().getActivity().getWindow().getDecorView()
+                    .setSystemUiVisibility(mOriginalSystemUiVisibility);
+//        getModule().getActivity().setRequestedOrientation(mOriginalOrientation);
+
+            // 3. Call the custom view callback
+//        if (mCustomViewCallback != null){
+//            mCustomViewCallback.onCustomViewHidden();
+//            mCustomViewCallback = null;
+//        }
+
+            if (getModule().getActivity().getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) {
+                getModule().getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            }
+
+            isFullScreen = false;
+            webEventEmitter.onFullScreen(isFullScreen);
+        }else{
+            Log.d("RNWebView","quitFullScreen-NoIsFullScreen-NoRunQuitFullScreen");
         }
-
-        // 2. Restore the state to it's original form
-        getModule().getActivity().getWindow().getDecorView()
-                .setSystemUiVisibility(mOriginalSystemUiVisibility);
-        getModule().getActivity().setRequestedOrientation(mOriginalOrientation);
-
-        // 3. Call the custom view callback
-        if (mCustomViewCallback != null){
-            mCustomViewCallback.onCustomViewHidden();
-            mCustomViewCallback = null;
-        }
-
-
-        getModule().getActivity().setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        isFullScreen=false;
-        webEventEmitter.onFullScreen(isFullScreen);
     }
 
 }
