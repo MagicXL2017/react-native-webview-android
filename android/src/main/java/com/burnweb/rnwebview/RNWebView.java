@@ -13,6 +13,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.GeolocationPermissions;
+import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -22,6 +23,11 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.VideoView;
 
+<<<<<<< HEAD
+=======
+import com.facebook.react.bridge.ReadableArray;
+import com.facebook.react.common.SystemClock;
+>>>>>>> d6feafc81eef4d9f8dabe36f34404c8f32f30781
 import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.common.SystemClock;
 import com.facebook.react.uimanager.ThemedReactContext;
@@ -40,6 +46,7 @@ class RNWebView extends WebView implements LifecycleEventListener {
     private String injectedJavaScript = null;
     private boolean allowUrlRedirect = false;
 
+<<<<<<< HEAD
     private boolean isFullScreen = false;
     private boolean isCanFullScreen = false;
 
@@ -59,23 +66,29 @@ class RNWebView extends WebView implements LifecycleEventListener {
         webEventEmitter.setViewId(id);
     }
 
+=======
+    private String currentUrl = "";
+    private String shouldOverrideUrlLoadingUrl = "";
+>>>>>>> d6feafc81eef4d9f8dabe36f34404c8f32f30781
 
     protected class EventWebClient extends WebViewClient {
         public boolean shouldOverrideUrlLoading(WebView view, String url){
-            if(RNWebView.this.getAllowUrlRedirect()) {
-                // do your handling codes here, which url is the requested url
-                // probably you need to open that url rather than redirect:
-                view.loadUrl(url);
+            int navigationType = 0;
 
-                return false; // then it is not handled by default action
+            if (currentUrl.equals(url) || url.equals("about:blank")) { // for regular .reload() and html reload.
+                navigationType = 3;
             }
 
-            return super.shouldOverrideUrlLoading(view, url);
+            shouldOverrideUrlLoadingUrl = url;
+            mEventDispatcher.dispatchEvent(new ShouldOverrideUrlLoadingEvent(getId(), SystemClock.nanoTime(), url, navigationType));
+
+            return true;
         }
 
         public void onPageFinished(WebView view, String url) {
             mEventDispatcher.dispatchEvent(new NavigationStateChangeEvent(getId(), SystemClock.nanoTime(), view.getTitle(), false, url, view.canGoBack(), view.canGoForward()));
 
+<<<<<<< HEAD
             // Run javascript code that detects the video end and notifies the interface
             String js = "javascript:(function() {";
             js += "_ytrp_html5_video = document.getElementsByTagName('video')[0];";
@@ -110,6 +123,9 @@ class RNWebView extends WebView implements LifecycleEventListener {
 
 
 //                view.loadUrl(js);
+=======
+            currentUrl = url;
+>>>>>>> d6feafc81eef4d9f8dabe36f34404c8f32f30781
 
             if(RNWebView.this.getInjectedJavaScript() != null) {
 //                view.loadUrl("\n" + RNWebView.this.getInjectedJavaScript() + ";\n})();");
@@ -379,6 +395,7 @@ class RNWebView extends WebView implements LifecycleEventListener {
         }
 
         this.setWebViewClient(new EventWebClient());
+<<<<<<< HEAD
 
         this.addJavascriptInterface(new JavascriptInterface(), "_VideoEnabledWebView");
         customWebChromeClient = getCustomClient();
@@ -386,6 +403,11 @@ class RNWebView extends WebView implements LifecycleEventListener {
 
         Log.i("RNWebView","RNWebView");
 
+=======
+        this.setWebChromeClient(getCustomClient());
+
+        this.addJavascriptInterface(RNWebView.this, "webView");
+>>>>>>> d6feafc81eef4d9f8dabe36f34404c8f32f30781
     }
 
     public void setCharset(String charset) {
@@ -414,6 +436,12 @@ class RNWebView extends WebView implements LifecycleEventListener {
 
     public void setBaseUrl(String baseUrl) {
         this.baseUrl = baseUrl;
+    }
+
+    public void shouldOverrideWithResult(RNWebView view, ReadableArray args) {
+        if (!args.getBoolean(0)) {
+            view.loadUrl(shouldOverrideUrlLoadingUrl);
+        }
     }
 
     public String getBaseUrl() {
@@ -465,6 +493,7 @@ class RNWebView extends WebView implements LifecycleEventListener {
         super.onDetachedFromWindow();
     }
 
+<<<<<<< HEAD
 //    public void callJS(WebView view, String args) {
 //        if(args != null) {
 //            view.loadUrl("javascript:(function() {\n" + args + ";\n})();");
@@ -593,4 +622,10 @@ class RNWebView extends WebView implements LifecycleEventListener {
         }
     }
 
+=======
+    @JavascriptInterface
+     public void postMessage(String jsParamaters) {
+        mEventDispatcher.dispatchEvent(new MessageEvent(getId(), jsParamaters));
+    }
+>>>>>>> d6feafc81eef4d9f8dabe36f34404c8f32f30781
 }

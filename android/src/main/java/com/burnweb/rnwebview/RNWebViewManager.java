@@ -20,6 +20,9 @@ import java.util.Map;
 
 import javax.annotation.Nullable;
 
+import org.json.JSONObject;
+import org.json.JSONException;
+
 public class RNWebViewManager extends SimpleViewManager<RNWebView> {
 
 
@@ -27,6 +30,10 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
     public static final int GO_BACK = 1;
     public static final int GO_FORWARD = 2;
     public static final int RELOAD = 3;
+    public static final int STOP_LOADING = 4;
+    public static final int POST_MESSAGE = 5;
+    public static final int INJECT_JAVASCRIPT = 6;
+    public static final int SHOULD_OVERRIDE_WITH_RESULT = 7;
 
     public static final int COMMAND_INJECT_JAVASCRIPT = 6;
 
@@ -188,7 +195,14 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
             "goBack", GO_BACK,
             "goForward", GO_FORWARD,
             "reload", RELOAD,
+<<<<<<< HEAD
                 "injectJS",COMMAND_INJECT_JAVASCRIPT
+=======
+            "stopLoading", STOP_LOADING,
+            "postMessage", POST_MESSAGE,
+            "injectJavaScript", INJECT_JAVASCRIPT,
+            "shouldOverrideWithResult", SHOULD_OVERRIDE_WITH_RESULT
+>>>>>>> d6feafc81eef4d9f8dabe36f34404c8f32f30781
         );
     }
 
@@ -204,14 +218,46 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
             case RELOAD:
                 view.reload();
                 break;
+<<<<<<< HEAD
             case COMMAND_INJECT_JAVASCRIPT:
                 view.loadUrl("javascript:" + args.getString(0));
                 break;
+=======
+            case STOP_LOADING:
+                view.stopLoading();
+                break;
+            case POST_MESSAGE:
+                try {
+                  JSONObject eventInitDict = new JSONObject();
+                  eventInitDict.put("data", args.getString(0));
+                  view.loadUrl("javascript:(function () {" +
+                    "var event;" +
+                    "var data = " + eventInitDict.toString() + ";" +
+                    "try {" +
+                      "event = new MessageEvent('message', data);" +
+                    "} catch (e) {" +
+                      "event = document.createEvent('MessageEvent');" +
+                      "event.initMessageEvent('message', true, true, data.data, data.origin, data.lastEventId, data.source);" +
+                    "}" +
+                    "document.dispatchEvent(event);" +
+                  "})();");
+                } catch (JSONException e) {
+                  throw new RuntimeException(e);
+                }
+                break;
+            case INJECT_JAVASCRIPT:
+                view.loadUrl("javascript:" + args.getString(0));
+                break;
+            case SHOULD_OVERRIDE_WITH_RESULT:
+                view.shouldOverrideWithResult(view, args);
+                break;
+>>>>>>> d6feafc81eef4d9f8dabe36f34404c8f32f30781
         }
     }
 
     @Override
     public Map getExportedCustomDirectEventTypeConstants() {
+<<<<<<< HEAD
 
         MapBuilder.Builder<String, Object> builder = MapBuilder.builder();
         builder.put(NavigationStateChangeEvent.EVENT_NAME, MapBuilder.of("registrationName", "onNavigationStateChange"));
@@ -219,6 +265,13 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
             builder.put(event, MapBuilder.of("registrationName", event));
         }
         return builder.build();
+=======
+        return MapBuilder.<String, Object>builder()
+            .put(NavigationStateChangeEvent.EVENT_NAME, MapBuilder.of("registrationName", "onNavigationStateChange"))
+            .put(MessageEvent.EVENT_NAME, MapBuilder.of("registrationName", "onMessageEvent"))
+            .put(ShouldOverrideUrlLoadingEvent.EVENT_NAME, MapBuilder.of("registrationName", "onShouldOverrideUrlLoading"))
+            .build();
+>>>>>>> d6feafc81eef4d9f8dabe36f34404c8f32f30781
     }
 
     @Override
@@ -227,5 +280,4 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
 
         ((ThemedReactContext) webView.getContext()).removeLifecycleEventListener(webView);
     }
-
 }

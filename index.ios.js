@@ -3,15 +3,11 @@
  */
 'use strict';
 
-try {
-  var React = require('react');
-} catch(ex) {
-  var React = require('react-native');
-}
-
+var React = require('react');
 var { StyleSheet } = require('react-native');
+var createClass = require('create-react-class');
 
-var UnimplementedView = React.createClass({
+var UnimplementedView = createClass({
   setNativeProps: function() {
     // Do nothing.
   },
