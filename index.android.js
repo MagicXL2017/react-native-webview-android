@@ -76,13 +76,6 @@ var WebViewAndroid = createClass({
       null
     );
   },
-<<<<<<< HEAD
-  injectJS: function(args) {
-    RCTUIManager.dispatchViewManagerCommand(
-      this._getWebViewHandle(),
-      RCTUIManager.RNWebViewAndroid.Commands.injectJS,
-      args
-=======
   stopLoading: function() {
     RCTUIManager.dispatchViewManagerCommand(
       this._getWebViewHandle(),
@@ -102,7 +95,6 @@ var WebViewAndroid = createClass({
       this._getWebViewHandle(),
       RCTUIManager.RNWebViewAndroid.Commands.injectJavaScript,
       [data]
->>>>>>> d6feafc81eef4d9f8dabe36f34404c8f32f30781
     );
   },
   render: function() {

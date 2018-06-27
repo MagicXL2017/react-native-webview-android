@@ -1,31 +1,28 @@
 package com.burnweb.rnwebview;
 
-import android.view.ViewGroup.LayoutParams;
-import android.webkit.CookieManager;
-import android.webkit.WebSettings;
-
-import com.facebook.react.bridge.Callback;
-import com.facebook.react.bridge.ReactMethod;
-import com.facebook.react.bridge.ReadableArray;
-import com.facebook.react.bridge.ReadableMap;
-import com.facebook.react.bridge.ReadableMapKeySetIterator;
-import com.facebook.react.common.MapBuilder;
-import com.facebook.react.common.annotations.VisibleForTesting;
-import com.facebook.react.uimanager.SimpleViewManager;
-import com.facebook.react.uimanager.ThemedReactContext;
-import com.facebook.react.uimanager.annotations.ReactProp;
+import javax.annotation.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.annotation.Nullable;
+import android.view.ViewGroup.LayoutParams;
+import android.webkit.WebSettings;
+import android.webkit.CookieManager;
+
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableMapKeySetIterator;
+
+import com.facebook.react.bridge.ReadableArray;
+import com.facebook.react.common.MapBuilder;
+import com.facebook.react.uimanager.SimpleViewManager;
+import com.facebook.react.uimanager.ThemedReactContext;
+import com.facebook.react.uimanager.annotations.ReactProp;
+import com.facebook.react.common.annotations.VisibleForTesting;
 
 import org.json.JSONObject;
 import org.json.JSONException;
 
 public class RNWebViewManager extends SimpleViewManager<RNWebView> {
-
-
 
     public static final int GO_BACK = 1;
     public static final int GO_FORWARD = 2;
@@ -34,9 +31,6 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
     public static final int POST_MESSAGE = 5;
     public static final int INJECT_JAVASCRIPT = 6;
     public static final int SHOULD_OVERRIDE_WITH_RESULT = 7;
-
-    public static final int COMMAND_INJECT_JAVASCRIPT = 6;
-
 
     private static final String HTML_MIME_TYPE = "text/html";
 
@@ -182,27 +176,16 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
         view.setInjectedJavaScript(injectedJavaScript);
     }
 
-
-    @ReactMethod
-    public void isFullScreen(RNWebView view, Callback callback) {
-        callback.invoke(view.getIsFullScreen());
-    }
-
-
     @Override
     public @Nullable Map<String, Integer> getCommandsMap() {
         return MapBuilder.of(
             "goBack", GO_BACK,
             "goForward", GO_FORWARD,
             "reload", RELOAD,
-<<<<<<< HEAD
-                "injectJS",COMMAND_INJECT_JAVASCRIPT
-=======
             "stopLoading", STOP_LOADING,
             "postMessage", POST_MESSAGE,
             "injectJavaScript", INJECT_JAVASCRIPT,
             "shouldOverrideWithResult", SHOULD_OVERRIDE_WITH_RESULT
->>>>>>> d6feafc81eef4d9f8dabe36f34404c8f32f30781
         );
     }
 
@@ -218,11 +201,6 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
             case RELOAD:
                 view.reload();
                 break;
-<<<<<<< HEAD
-            case COMMAND_INJECT_JAVASCRIPT:
-                view.loadUrl("javascript:" + args.getString(0));
-                break;
-=======
             case STOP_LOADING:
                 view.stopLoading();
                 break;
@@ -251,27 +229,16 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
             case SHOULD_OVERRIDE_WITH_RESULT:
                 view.shouldOverrideWithResult(view, args);
                 break;
->>>>>>> d6feafc81eef4d9f8dabe36f34404c8f32f30781
         }
     }
 
     @Override
     public Map getExportedCustomDirectEventTypeConstants() {
-<<<<<<< HEAD
-
-        MapBuilder.Builder<String, Object> builder = MapBuilder.builder();
-        builder.put(NavigationStateChangeEvent.EVENT_NAME, MapBuilder.of("registrationName", "onNavigationStateChange"));
-        for (String event : WebViewEventEmitter.Events) {
-            builder.put(event, MapBuilder.of("registrationName", event));
-        }
-        return builder.build();
-=======
         return MapBuilder.<String, Object>builder()
             .put(NavigationStateChangeEvent.EVENT_NAME, MapBuilder.of("registrationName", "onNavigationStateChange"))
             .put(MessageEvent.EVENT_NAME, MapBuilder.of("registrationName", "onMessageEvent"))
             .put(ShouldOverrideUrlLoadingEvent.EVENT_NAME, MapBuilder.of("registrationName", "onShouldOverrideUrlLoading"))
             .build();
->>>>>>> d6feafc81eef4d9f8dabe36f34404c8f32f30781
     }
 
     @Override
