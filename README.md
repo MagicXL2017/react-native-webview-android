@@ -81,16 +81,41 @@ var WebViewAndroidExample = React.createClass({
         backButtonEnabled: false,
         forwardButtonEnabled: false,
         loading: true,
+        messageFromWebView: null
       };
     },
     goBack: function() {
-      this.refs.webViewAndroidSample.goBack(); // you can use this callbacks to control webview
+      // you can use this callback to control web view
+      this.refs.webViewAndroidSample.goBack();
     },
     goForward: function() {
       this.refs.webViewAndroidSample.goForward();
     },
     reload: function() {
       this.refs.webViewAndroidSample.reload();
+    },
+    stopLoading: function() {
+      // stops the current load
+      this.refs.webViewAndroidSample.stopLoading();
+    },
+    postMessage: function(data) {
+      // posts a message to web view
+      this.refs.webViewAndroidSample.postMessage(data);
+    },
+    injectJavaScript: function(script) {
+      // executes JavaScript immediately in web view
+      this.refs.webViewAndroidSample.injectJavaScript(script);
+    },
+    onShouldStartLoadWithRequest: function(event) {
+      // currently only url & navigationState are returned in the event.
+      console.log(event.url);
+      console.log(event.navigationState);
+
+      if (event.url === 'https://www.mywebsiteexample.com/') {
+        return true;
+      } else {
+        return false;
+      }
     },
     onNavigationStateChange: function(event) {
       console.log(event);
@@ -103,6 +128,23 @@ var WebViewAndroidExample = React.createClass({
         loading: event.loading
       });
     },
+    onMessage: function(event) {
+      this.setState({
+        messageFromWebView: event.message
+      });
+    },
+    javascriptToInject: function () {
+      return `
+        $(document).ready(function() {
+          $('a').click(function(event) {
+            if ($(this).attr('href')) {
+              var href = $(this).attr('href');
+              window.webView.postMessage('Link tapped: ' + href);
+            }
+          })
+        })
+      `
+    },
     render: function() {
       return (
         <WebViewAndroid
@@ -110,7 +152,10 @@ var WebViewAndroidExample = React.createClass({
           javaScriptEnabled={true}
           geolocationEnabled={false}
           builtInZoomControls={false}
+          injectedJavaScript={this.javascriptToInject()}
+          onShouldStartLoadWithRequest={this.onShouldStartLoadWithRequest}
           onNavigationStateChange={this.onNavigationStateChange}
+          onMessage={this.onMessage}
           url={SITE_URL} // or use the source(object) attribute...
           style={styles.containerWebView} />
       );
@@ -125,6 +170,10 @@ var styles = StyleSheet.create({
   }
 });
 ```
+
+## Note about onShouldStartLoadWithRequest
+
+This module has a working implementation of onShouldStartLoadWithRequest. However, the event it returns currently only includes `url` and `navigationState`.
 
 ## Note about HTML file input (files upload)
 
