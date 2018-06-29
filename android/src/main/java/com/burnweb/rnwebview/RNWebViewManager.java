@@ -2,15 +2,12 @@ package com.burnweb.rnwebview;
 
 import javax.annotation.Nullable;
 
-import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 
 import android.view.ViewGroup.LayoutParams;
 import android.webkit.WebSettings;
 import android.webkit.CookieManager;
-import android.webkit.WebView;
 
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.ReadableMapKeySetIterator;
@@ -35,12 +32,7 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
     public static final int INJECT_JAVASCRIPT = 6;
     public static final int SHOULD_OVERRIDE_WITH_RESULT = 7;
 
-    protected static final String HTML_ENCODING = "UTF-8";
     private static final String HTML_MIME_TYPE = "text/html";
-
-    protected static final String HTTP_METHOD_POST = "POST";
-
-    protected static final String BLANK_URL = "about:blank";
 
     private HashMap<String, String> headerMap = new HashMap<>();
     private RNWebViewPackage aPackage;
@@ -145,63 +137,23 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
     }
 
     @ReactProp(name = "source")
-    public void setSource(WebView view, @Nullable ReadableMap source) {
+    public void setSource(RNWebView view, @Nullable ReadableMap source) {
         if (source != null) {
+            if (source.hasKey("baseUrl")) {
+                setBaseUrl(view, source.getString("baseUrl"));
+            }
             if (source.hasKey("html")) {
-                String html = source.getString("html");
-                if (source.hasKey("baseUrl")) {
-                    view.loadDataWithBaseURL(
-                            source.getString("baseUrl"), html, HTML_MIME_TYPE, HTML_ENCODING, null);
-                } else {
-                    view.loadData(html, HTML_MIME_TYPE, HTML_ENCODING);
-                }
+                setHtml(view, source.getString("html"));
                 return;
             }
             if (source.hasKey("uri")) {
-                String url = source.getString("uri");
-                String previousUrl = view.getUrl();
-                if (previousUrl != null && previousUrl.equals(url)) {
-                    return;
-                }
-                if (source.hasKey("method")) {
-                    String method = source.getString("method");
-                    if (method.equals(HTTP_METHOD_POST)) {
-                        byte[] postData = null;
-                        if (source.hasKey("body")) {
-                            String body = source.getString("body");
-                            try {
-                                postData = body.getBytes("UTF-8");
-                            } catch (UnsupportedEncodingException e) {
-                                postData = body.getBytes();
-                            }
-                        }
-                        if (postData == null) {
-                            postData = new byte[0];
-                        }
-                        view.postUrl(url, postData);
-                        return;
-                    }
-                }
-                HashMap<String, String> headerMap = new HashMap<>();
                 if (source.hasKey("headers")) {
-                    ReadableMap headers = source.getMap("headers");
-                    ReadableMapKeySetIterator iter = headers.keySetIterator();
-                    while (iter.hasNextKey()) {
-                        String key = iter.nextKey();
-                        if ("user-agent".equals(key.toLowerCase(Locale.ENGLISH))) {
-                            if (view.getSettings() != null) {
-                                view.getSettings().setUserAgentString(headers.getString(key));
-                            }
-                        } else {
-                            headerMap.put(key, headers.getString(key));
-                        }
-                    }
+                    setHeaders(view, source.getMap("headers"));
                 }
-                view.loadUrl(url, headerMap);
+                setUrl(view, source.getString("uri"));
                 return;
             }
         }
-        view.loadUrl(BLANK_URL);
     }
 
     @ReactProp(name = "baseUrl")
