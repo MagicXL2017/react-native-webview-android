@@ -1,26 +1,28 @@
 package com.burnweb.rnwebview;
 
-import javax.annotation.Nullable;
-
-import java.util.HashMap;
-import java.util.Map;
-
 import android.view.ViewGroup.LayoutParams;
-import android.webkit.WebSettings;
 import android.webkit.CookieManager;
-
-import com.facebook.react.bridge.ReadableMap;
-import com.facebook.react.bridge.ReadableMapKeySetIterator;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
 
 import com.facebook.react.bridge.ReadableArray;
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableMapKeySetIterator;
 import com.facebook.react.common.MapBuilder;
+import com.facebook.react.common.annotations.VisibleForTesting;
 import com.facebook.react.uimanager.SimpleViewManager;
 import com.facebook.react.uimanager.ThemedReactContext;
 import com.facebook.react.uimanager.annotations.ReactProp;
-import com.facebook.react.common.annotations.VisibleForTesting;
 
-import org.json.JSONObject;
 import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+
+import javax.annotation.Nullable;
 
 public class RNWebViewManager extends SimpleViewManager<RNWebView> {
 
@@ -31,6 +33,9 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
     public static final int POST_MESSAGE = 5;
     public static final int INJECT_JAVASCRIPT = 6;
     public static final int SHOULD_OVERRIDE_WITH_RESULT = 7;
+    protected static final String HTML_ENCODING = "UTF-8";
+    protected static final String HTTP_METHOD_POST = "POST";
+    protected static final String BLANK_URL = "about:blank";
 
     private static final String HTML_MIME_TYPE = "text/html";
 
@@ -135,25 +140,84 @@ public class RNWebViewManager extends SimpleViewManager<RNWebView> {
             headerMap.put(key, headers.getString(key));
         }
     }
+//    @ReactProp(name = "source")
+//    public void setSource(RNWebView view, @Nullable ReadableMap source) {
+//        if (source != null) {
+//            if (source.hasKey("baseUrl")) {
+//                setBaseUrl(view, source.getString("baseUrl"));
+//            }
+//            if (source.hasKey("html")) {
+//                setHtml(view, source.getString("html"));
+//                return;
+//            }
+//            if (source.hasKey("uri")) {
+//                if (source.hasKey("headers")) {
+//                    setHeaders(view, source.getMap("headers"));
+//                }
+//                setUrl(view, source.getString("uri"));
+//                return;
+//            }
+//        }
+//    }
 
     @ReactProp(name = "source")
-    public void setSource(RNWebView view, @Nullable ReadableMap source) {
+    public void setSource(WebView view, @Nullable ReadableMap source) {
         if (source != null) {
-            if (source.hasKey("baseUrl")) {
-                setBaseUrl(view, source.getString("baseUrl"));
-            }
             if (source.hasKey("html")) {
-                setHtml(view, source.getString("html"));
+                String html = source.getString("html");
+                if (source.hasKey("baseUrl")) {
+                    view.loadDataWithBaseURL(
+                            source.getString("baseUrl"), html, HTML_MIME_TYPE, HTML_ENCODING, null);
+                } else {
+                    view.loadData(html, HTML_MIME_TYPE, HTML_ENCODING);
+                }
                 return;
             }
             if (source.hasKey("uri")) {
-                if (source.hasKey("headers")) {
-                    setHeaders(view, source.getMap("headers"));
+                String url = source.getString("uri");
+                String previousUrl = view.getUrl();
+                if (previousUrl != null && previousUrl.equals(url)) {
+                    return;
                 }
-                setUrl(view, source.getString("uri"));
+                if (source.hasKey("method")) {
+                    String method = source.getString("method");
+                    if (method.equals(HTTP_METHOD_POST)) {
+                        byte[] postData = null;
+                        if (source.hasKey("body")) {
+                            String body = source.getString("body");
+                            try {
+                                postData = body.getBytes("UTF-8");
+                            } catch (UnsupportedEncodingException e) {
+                                postData = body.getBytes();
+                            }
+                        }
+                        if (postData == null) {
+                            postData = new byte[0];
+                        }
+                        view.postUrl(url, postData);
+                        return;
+                    }
+                }
+                HashMap<String, String> headerMap = new HashMap<>();
+                if (source.hasKey("headers")) {
+                    ReadableMap headers = source.getMap("headers");
+                    ReadableMapKeySetIterator iter = headers.keySetIterator();
+                    while (iter.hasNextKey()) {
+                        String key = iter.nextKey();
+                        if ("user-agent".equals(key.toLowerCase(Locale.ENGLISH))) {
+                            if (view.getSettings() != null) {
+                                view.getSettings().setUserAgentString(headers.getString(key));
+                            }
+                        } else {
+                            headerMap.put(key, headers.getString(key));
+                        }
+                    }
+                }
+                view.loadUrl(url, headerMap);
                 return;
             }
         }
+        view.loadUrl(BLANK_URL);
     }
 
     @ReactProp(name = "baseUrl")
